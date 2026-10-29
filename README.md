@@ -15,7 +15,7 @@ Versi awal aplikasi operasional satu cabang. Dibangun dengan React, TypeScript, 
 
 ## Aturan sementara
 
-Harga contoh: Cuci Setrika Rp7.000/kg; Setrika Saja Rp5.000/kg; Cuci Express Rp12.000/kg; Bed Cover Rp25.000/pcs. Harga dan durasi di `lib/domain.ts`; belum ada editor harga. Belum diberlakukan minimum berat. Input kg sampai tiga desimal, subtotal dibulatkan ke rupiah terdekat. Laporan memakai hari WIB. Form estimasi menggunakan zona waktu perangkat, lalu disimpan sebagai UTC.
+Harga mengikuti 7 kategori dan 24 varian di foto menu toko; sumber katalog ada di `lib/domain.ts`. Belum ada editor harga atau minimum berat. Input kg sampai tiga desimal, subtotal dibulatkan ke rupiah terdekat. Pcs dan set wajib bilangan bulat. Laporan memakai hari WIB. Form estimasi menggunakan zona waktu perangkat, lalu disimpan sebagai UTC.
 
 Produksi dicatat per pesanan. Order campuran mengikuti jalur lengkap; progres per item belum tersedia. Pengeluaran memakai waktu pencatatan. Ringkasan selisih kas bukan laba akuntansi.
 
@@ -42,3 +42,10 @@ npm run build
 ## Batas versi awal
 
 Akses pegawai/role, katalog yang dapat diedit, koreksi/pembatalan order, refund, pengaturan printer thermal, dan WhatsApp otomatis belum tersedia. Konfirmasi aturan toko serta uji dengan data latihan sebelum dipakai untuk transaksi sebenarnya. Tidak ada pesanan contoh yang otomatis dimasukkan ke database hosting.
+
+## Menu toko dari foto
+
+Katalog sekarang berisi 7 kategori dan 24 varian harga dari foto menu toko. Pilihan durasi kilogram: Cuci + Setrika Wangi 3 hari/2 hari/1 hari/express 3 jam; Setrika Wangi dan Cuci Lipat Wangi 2 hari/1 hari/express 4 jam. Satuan lain menggunakan pcs atau set sesuai foto. Item sprei yang ditutup tidak dimasukkan.
+
+Durasi layanan satuan tidak tercantum di foto, sehingga form meminta estimasi manual saat ada layanan tersebut. Order campuran dengan durasi yang diketahui menggunakan durasi terlama; estimasi tetap dapat diubah. Total, nama layanan, dan harga satuan pada order lama merupakan snapshot dan tidak mengikuti pembaruan katalog. Jalur Cuci Lipat melewati setrika, jalur Setrika Wangi melewati cuci/kering. Tidak ada perubahan skema database.
+
