@@ -1,4 +1,5 @@
 import LaundryApp from './laundry-app';
-import { getChatGPTUser } from './chatgpt-auth';
+import { getSession } from '@/lib/auth';
+import LoginForm from './login-form';
 export const dynamic='force-dynamic';
-export default async function Home(){const user=await getChatGPTUser();return <LaundryApp user={user?{name:user.displayName}:null}/>;}
+export default async function Home(){const user=await getSession();return user?<LaundryApp user={user}/>:<LoginForm/>;}

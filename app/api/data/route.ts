@@ -1,31 +1,33 @@
 import { env } from 'cloudflare:workers';
-import { getChatGPTUser } from '../../chatgpt-auth';
+import { getSession } from '@/lib/auth';
+import { canPerform,canViewFinance } from '@/lib/permissions';
 import { validateOrder, amount, METHODS, nextStatus } from '@/lib/domain';
 export const dynamic='force-dynamic';
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
-async function snapshot(){
+async function snapshot(role:string){
  const db=env.DB!;
- const [os,ps,es]=await db.batch([db.prepare('SELECT * FROM orders ORDER BY created DESC'),db.prepare('SELECT * FROM payments ORDER BY created'),db.prepare('SELECT * FROM expenses ORDER BY created DESC')]);
+ const [os,ps,es]=await db.batch([db.prepare('SELECT * FROM orders ORDER BY created DESC'),db.prepare('SELECT * FROM payments ORDER BY created'),db.prepare(canViewFinance(role)?'SELECT * FROM expenses ORDER BY created DESC':'SELECT * FROM expenses WHERE 0')]);
  return {orders:os.results.map((o:any)=>{const payments=ps.results.filter((p:any)=>p.order_id===o.id).map((p:any)=>({...p,orderId:p.order_id}));return {...o,items:JSON.parse(o.items),history:JSON.parse(o.history),payments,paid:payments.reduce((a:number,p:any)=>a+p.amount,0)};}),expenses:es.results};
 }
-export async function GET(){
- try{const u=await getChatGPTUser();if(!u)return json({error:'Silakan masuk terlebih dahulu.'},401);return json(await snapshot());}
+export async function GET(request:Request){
+ try{const u=await getSession();if(!u)return json({error:'Silakan masuk terlebih dahulu.'},401);if(new URL(request.url).searchParams.get('scope')==='finance'&&!canViewFinance(u.role))return json({error:'Akses keuangan hanya untuk owner.'},403);return json(await snapshot(u.role));}
  catch(e){console.error('Read failed',e);return json({error:'Data belum dapat dimuat. Coba lagi sebentar.'},500);}
 }
 export async function POST(request:Request){
  try{
- const u=await getChatGPTUser();if(!u)return json({error:'Silakan masuk terlebih dahulu.'},401);
+ const u=await getSession();if(!u)return json({error:'Silakan masuk terlebih dahulu.'},401);
  if(request.headers.get('origin')!==new URL(request.url).origin)return json({error:'Permintaan tidak diizinkan.'},403);
- const b:any=await request.json(); if(!b||typeof b!=='object'||Array.isArray(b))throw Error('Permintaan tidak valid.'); const db=env.DB!,now=new Date().toISOString(),actor=u.displayName;
+ const b:any=await request.json(); if(!b||typeof b!=='object'||Array.isArray(b))throw Error('Permintaan tidak valid.'); const db=env.DB!,now=new Date().toISOString(),actor=u.name;
+ if(!canPerform(u.role,b.action))return json({error:'Akses ini hanya tersedia untuk owner.'},403);
  if(typeof b.id!=='string'||!/^[-a-zA-Z0-9]{16,80}$/.test(b.id))throw Error('Identitas transaksi tidak valid. Muat ulang halaman.');
  if(b.action==='create'){
   const existing=await db.prepare('SELECT id FROM orders WHERE id=?').bind(b.id).first();
-  if(existing)return json({...(await snapshot()),selectedId:b.id});
+  if(existing)return json({...(await snapshot(u.role)),selectedId:b.id});
   const o=validateOrder(b),number='LM-'+now.slice(0,10).replaceAll('-','')+'-'+b.id.replaceAll('-','').slice(0,8).toUpperCase();
   const statements=[db.prepare('INSERT INTO orders (id,number,customer,phone,items,total,discount,extra,status,due,created,notes,packages,rack,history) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(b.id,number,o.customer,o.phone,JSON.stringify(o.items),o.total,o.discount,o.extra,'Diterima',o.due,now,o.notes,o.packages,o.rack,JSON.stringify([{status:'Diterima',at:now,actor}]))];
   if(o.paid) statements.push(db.prepare('INSERT INTO payments (id,order_id,amount,method,created,actor) VALUES (?,?,?,?,?,?)').bind(b.id+'-initial',b.id,o.paid,o.method,now,actor));
   await db.batch(statements);
-  return json({...(await snapshot()),selectedId:b.id});
+  return json({...(await snapshot(u.role)),selectedId:b.id});
  }
  if(b.action==='payment'){
   const n=amount(b.amount);if(!n||!METHODS.includes(b.method))throw Error('Isi nominal dan metode pembayaran yang valid.');
@@ -47,7 +49,7 @@ export async function POST(request:Request){
   await db.prepare('INSERT INTO expenses (id,category,amount,note,created,actor) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING').bind(b.id,b.category,n,String(b.note??'').slice(0,300),now,actor).run();
  }
  else throw Error('Aksi tidak dikenali.');
- return json(await snapshot());
+ return json(await snapshot(u.role));
  }catch(e){const message=e instanceof Error?e.message:'';if(/D1_|SQLITE|constraint|database/i.test(message)){console.error('Write failed',e);return json({error:'Transaksi belum berhasil disimpan. Coba lagi; jangan tutup formulir.'},500);}return json({error:message||'Transaksi gagal. Silakan coba kembali.'},400);}
 }
 

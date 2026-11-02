@@ -1,6 +1,6 @@
 # LM Laundry
 
-Versi awal aplikasi operasional satu cabang. Dibangun dengan React, TypeScript, Vinext, dan Cloudflare D1 melalui Sites. Hosting privat untuk owner; akses pegawai belum diimplementasikan.
+Versi awal aplikasi operasional satu cabang. Dibangun dengan React, TypeScript, Vinext, dan Cloudflare D1 melalui Sites. Login internal email–password dengan dua role: owner dan pegawai. Halaman login dapat diakses tanpa akun ChatGPT; data operasional memerlukan sesi aplikasi yang valid.
 
 ## Fitur
 
@@ -29,7 +29,7 @@ Terapkan migrasi lokal yang belum diterapkan dengan:
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_....sql
 ```
 
-Ganti nama file dengan migrasi aktual. Jalankan `npm run dev`; buka alamat yang dicetak server. Masuk melalui tombol ChatGPT memakai identitas simulasi lokal. Database lokal terpisah dari hosting.
+Ganti nama file dengan migrasi aktual. Jalankan `npm run dev`; buka alamat yang dicetak server. Konfigurasikan hash akun awal pada variabel `AUTH_BOOTSTRAP_USERS` di `.dev.vars` yang diabaikan Git, lalu masuk dengan akun aplikasi. Database lokal terpisah dari hosting.
 
 ## Pemeriksaan
 
@@ -41,7 +41,7 @@ npm run build
 
 ## Batas versi awal
 
-Akses pegawai/role, katalog yang dapat diedit, koreksi/pembatalan order, refund, pengaturan printer thermal, dan WhatsApp otomatis belum tersedia. Konfirmasi aturan toko serta uji dengan data latihan sebelum dipakai untuk transaksi sebenarnya. Tidak ada pesanan contoh yang otomatis dimasukkan ke database hosting.
+Katalog yang dapat diedit, koreksi/pembatalan order, refund, pengaturan printer thermal, dan WhatsApp otomatis belum tersedia. Konfirmasi aturan toko serta uji dengan data latihan sebelum dipakai untuk transaksi sebenarnya. Tidak ada pesanan contoh yang otomatis dimasukkan ke database hosting.
 
 ## Menu toko dari foto
 
@@ -49,3 +49,14 @@ Katalog sekarang berisi 7 kategori dan 24 varian harga dari foto menu toko. Pili
 
 Durasi layanan satuan tidak tercantum di foto, sehingga form meminta estimasi manual saat ada layanan tersebut. Order campuran dengan durasi yang diketahui menggunakan durasi terlama; estimasi tetap dapat diubah. Total, nama layanan, dan harga satuan pada order lama merupakan snapshot dan tidak mengikuti pembaruan katalog. Jalur Cuci Lipat melewati setrika, jalur Setrika Wangi melewati cuci/kering. Tidak ada perubahan skema database.
 
+
+
+## Login dan hak akses
+
+Owner dapat mengelola pesanan, pembayaran, pengeluaran, dan laporan. Pegawai dapat mengelola pesanan, pembayaran, progres, serta melihat layanan dan pelanggan, tetapi tidak mendapat data pengeluaran atau menu keuangan. Endpoint memeriksa role dari database pada setiap permintaan. Ringkasan kas disembunyikan untuk pegawai; nominal tagihan dan pembayaran setiap order tetap tersedia untuk pekerjaan kasir.
+
+Akun awal diprovisikan dari secret runtime `AUTH_BOOTSTRAP_USERS`, berisi array dengan email, nama, role, salt, hash PBKDF2 SHA-256 100.000 iterasi. `scripts/hash-accounts.mjs` menyiapkan hash dari JSON kredensial melalui stdin tersembunyi. Tidak ada password awal di source atau migrasi. User yang sudah ada tidak ditimpa saat secret dibaca lagi. Untuk hosting, gunakan pengaturan environment Sites sebagai secret. Jangan menaruh data akun di hosting manifest atau Git.
+
+Session memakai token acak 256 bit, hanya hash token disimpan di database; cookie HttpOnly, SameSite=Lax, Secure pada HTTPS, kedaluwarsa 12 jam. Logout menghapus sesi server. Fitur Ganti password meminta password saat ini dan mencabut semua sesi akun. Batas login memakai penghitung database per email dan IP selama 15 menit, dengan pesan gagal yang tidak membocorkan keberadaan akun. Belum tersedia reset password lewat email atau pendaftaran publik.
+
+Tes tambahan: `node --experimental-strip-types --test tests/auth.test.mjs tests/domain.test.mjs`. Migration baru `drizzle/0001_foamy_vin_gonzales.sql` menambah tabel akun, sesi, dan pembatasan login tanpa mengubah order lama.

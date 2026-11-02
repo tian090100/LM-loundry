@@ -8,6 +8,13 @@
       "when": 1793259637441,
       "tag": "0000_early_red_hulk",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1793615827279,
+      "tag": "0001_foamy_vin_gonzales",
+      "breakpoints": true
     }
   ]
 }

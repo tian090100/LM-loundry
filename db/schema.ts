@@ -19,3 +19,15 @@ export const expenses = sqliteTable('expenses', {
  amount: integer('amount').notNull(), note: text('note').notNull(),
  created: text('created').notNull(), actor: text('actor').notNull(),
 });
+export const appUsers = sqliteTable('app_users', {
+ id:text('id').primaryKey(), email:text('email').notNull().unique(), name:text('name').notNull(),
+ role:text('role').notNull(), passwordHash:text('password_hash').notNull(), salt:text('salt').notNull(),
+ iterations:integer('iterations').notNull(), active:integer('active').notNull(), created:text('created').notNull(),
+});
+export const appSessions=sqliteTable('app_sessions',{
+ tokenHash:text('token_hash').primaryKey(), userId:text('user_id').notNull().references(()=>appUsers.id),
+ expires:integer('expires').notNull(), created:integer('created').notNull(),
+});
+export const authAttempts=sqliteTable('auth_attempts',{
+ key:text('key').primaryKey(), attempts:integer('attempts').notNull(), resetAt:integer('reset_at').notNull(),
+});
