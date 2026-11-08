@@ -60,3 +60,10 @@ Akun awal diprovisikan dari secret runtime `AUTH_BOOTSTRAP_USERS`, berisi array 
 Session memakai token acak 256 bit, hanya hash token disimpan di database; cookie HttpOnly, SameSite=Lax, Secure pada HTTPS, kedaluwarsa 12 jam. Logout menghapus sesi server. Fitur Ganti password meminta password saat ini dan mencabut semua sesi akun. Batas login memakai penghitung database per email dan IP selama 15 menit, dengan pesan gagal yang tidak membocorkan keberadaan akun. Belum tersedia reset password lewat email atau pendaftaran publik.
 
 Tes tambahan: `node --experimental-strip-types --test tests/auth.test.mjs tests/domain.test.mjs`. Migration baru `drizzle/0001_foamy_vin_gonzales.sql` menambah tabel akun, sesi, dan pembatasan login tanpa mengubah order lama.
+
+
+## Cetak dan unduh nota
+
+Detail pesanan menyediakan tautan Cetak / PDF ke halaman `/receipt/[id]`. Halaman ini memerlukan sesi aplikasi yang aktif, merender nota dengan React, dan menyediakan tombol Cetak serta Unduh PDF. Tombol Cetak memakai dialog browser; browser di dalam aplikasi dapat tidak mendukung dialog tersebut. Gunakan Unduh PDF lalu buka file di Chrome, Safari, atau aplikasi PDF untuk mencetak.
+
+PDF dibuat di server melalui `/api/receipts/[id]` menggunakan snapshot harga pesanan dan pembayaran terbaru. Format PDF lebar 80 mm dengan tinggi mengikuti isi. Font bawaan mendukung karakter Latin; karakter di luar cakupan font diganti dengan tanda tanya. Respons unduhan memakai autentikasi, no-store, nama file yang disanitasi, dan Content-Disposition attachment. Preview cetak HTML mengikuti pengaturan kertas pada printer/browser. Tidak ada integrasi Bluetooth langsung atau konfirmasi cetak fisik dari browser.
