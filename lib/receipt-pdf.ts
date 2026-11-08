@@ -1,8 +1,7 @@
 import type { Order } from './domain';
 
 // Dependency-free roll-paper PDF. Standard Courier keeps widths deterministic.
-// 58 mm paper with a centered 48 mm print area for common RP58 printers.
-const WIDTH=58*72/25.4, MARGIN=5*72/25.4, FONT=8, LEADING=11, COLS=28;
+const WIDTH=80*72/25.4, MARGIN=14, FONT=9, LEADING=13, COLS=36;
 type Line={text:string;bold?:boolean;center?:boolean;size?:number};
 function printable(value:unknown){return String(value).replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\u00a0/g,' ').replace(/[\u2010-\u2015]/g,'-').replace(/[\u2018\u2019]/g,"'").replace(/[\u201c\u201d]/g,'"').replace(/\u00d7/g,'x').replace(/\u2026/g,'...').replace(/\u2212/g,'-').replace(/[^\x20-\x7e\xa0-\xff]/gu,'?');}
 function wrap(value:unknown,columns=COLS){const text=printable(value).trim();if(!text)return [''];const lines:string[]=[];let rest=text;while(rest.length>columns){let at=rest.lastIndexOf(' ',columns);if(at<columns/3)at=columns;lines.push(rest.slice(0,at));rest=rest.slice(at).trimStart();}lines.push(rest);return lines;}
@@ -15,7 +14,7 @@ export function buildReceiptPdf(order:Order):Uint8Array{
  const add=(value:unknown,bold=false)=>wrap(value).forEach(text=>lines.push({text,bold}));
  const divider=()=>add('-'.repeat(COLS));
  const pair=(label:string,value:string,bold=false)=>{const left=printable(label),right=printable(value);if(left.length+right.length+1<=COLS)add(left.padEnd(COLS-right.length,' ')+right,bold);else{add(left,bold);add(right.padStart(COLS,' '),bold);}};
- lines.push({text:'LM Laundry',bold:true,center:true,size:14},{text:'Bersih Setiap Hari',center:true},{text:''});divider();
+ lines.push({text:'LM Laundry',bold:true,center:true,size:16},{text:'Bersih Setiap Hari',center:true},{text:''});divider();
  add(order.number,true);add(order.customer);add('WA: +'+order.phone);
  add('Masuk: '+when(order.created));add('Estimasi: '+when(order.due));
  add(order.packages+' paket | Rak '+(order.rack||'-'));divider();
