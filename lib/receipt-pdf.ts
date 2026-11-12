@@ -32,21 +32,6 @@ function receiptLines(order:Order,columns:number){
  return lines;
 }
 
-export function buildThermalReceipt(order:Order):string{
- // RPP02N Font A uses 12 dots per character across a 384-dot print area.
- const initialize='\x1b@\x1bM\x00';
- const normalSize='\x1d!\x00';
- const doubleHeight='\x1d!\x01';
- const lines=receiptLines(order,32).map(line=>{
-  const align=line.center?'\x1ba\x01':'\x1ba\x00';
-  const emphasis=line.bold?'\x1bE\x01':'\x1bE\x00';
-  const size=line.size||/^(TOTAL|SISA TAGIHAN)\s/.test(line.text)?doubleHeight:normalSize;
-  const text=line.text.normalize('NFD').replace(/\p{M}/gu,'').replace(/[^\x20-\x7e]/g,'?');
-  return align+emphasis+size+text+'\n';
- });
- return initialize+lines.join('')+normalSize+'\x1bd\x02';
-}
-
 export function buildReceiptPdf(order:Order,paper:58|80=80):Uint8Array{
  const width=paper===58?58*72/25.4:WIDTH;
  const margin=paper===58?5*72/25.4:MARGIN;
