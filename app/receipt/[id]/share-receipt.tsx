@@ -1,7 +1,7 @@
 'use client';
 
 import {useEffect,useState} from 'react';
-import {Download,MessageCircle,Share2} from 'lucide-react';
+import {MessageCircle,Share2} from 'lucide-react';
 
 export default function ShareReceipt({pdf,filename,phone,customer,initialOpen}:{pdf:string;filename:string;phone:string;customer:string;initialOpen:boolean}){
  const [open,setOpen]=useState(initialOpen),[file,setFile]=useState<File|null>(null);
@@ -40,13 +40,12 @@ export default function ShareReceipt({pdf,filename,phone,customer,initialOpen}:{
    <div aria-live="polite">
     {status==='loading'&&<p>Menyiapkan struk PDF…</p>}
     {status==='ready'&&<p>Pilih WhatsApp, lalu pilih chat {customer}.</p>}
-    {status==='error'&&<p role="alert">PDF belum bisa disiapkan untuk dibagikan. Coba unduh PDF atau masuk ulang jika sesi sudah berakhir.</p>}
-    {shareError&&<p role="alert">Berbagi file tidak berhasil. Unduh PDF, lalu lampirkan di chat pelanggan.</p>}
+    {status==='error'&&<p role="alert">PDF belum bisa disiapkan untuk dibagikan. Coba unduh PDF Thermal atau masuk ulang jika sesi sudah berakhir.</p>}
+    {shareError&&<p role="alert">Berbagi file tidak berhasil. Unduh PDF Thermal, lalu lampirkan di chat pelanggan.</p>}
    </div>
    {status==='ready'&&<button type="button" className="primary" onClick={share} disabled={sharing}><Share2 size={17}/>{sharing?'Membuka menu berbagi…':'Bagikan PDF'}</button>}
-   <p>Untuk melampirkan manual, unduh PDF, buka chat {customer}, lalu pilih <strong>Dokumen</strong> di WhatsApp.</p>
+   <p>Untuk melampirkan manual, Unduh PDF Thermal, buka chat {customer}, lalu pilih <strong>Dokumen</strong> di WhatsApp.</p>
    <div className="receipt-share-links">
-    <a className="secondary" href={pdf} download={filename}><Download size={16}/>Unduh PDF</a>
     <a className="secondary" href={'https://wa.me/'+encodeURIComponent(phone)} target="_blank" rel="noopener noreferrer"><MessageCircle size={16}/>Buka chat pelanggan</a>
    </div>
   </div>}
