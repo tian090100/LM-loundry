@@ -29,3 +29,10 @@
 .receipt-paper--thermal .receipt-total { font-size: 12pt; }
 .receipt-paper--thermal .receipt-notes { margin-top: 2mm; }
 .receipt-compact-print { margin-top: 12px; }
+
+.finance-report { display: grid; gap: 16px; }
+.finance-report .finance-stats { grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); margin: 0; }
+.finance-filters, .finance-tabs, .finance-methods { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.finance-filters label { display: grid; gap: 6px; }
+.finance-tabs, .finance-methods { margin-bottom: 14px; }
+.finance-tabs + .finance-methods { margin-top: 12px; }

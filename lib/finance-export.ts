@@ -1,8 +1,9 @@
 import ExcelJS from 'exceljs';
-import type { Expense, Order } from './domain';
+import type { FinanceReport } from './finance';
 
-const rupiah = '"Rp "#,##0;"-Rp "#,##0';
-const wibOffset = 7 * 60 * 60 * 1000;
+const rupiah = '"Rp "#,##0.##;"-Rp "#,##0.##';
+const timestamp = 'dd/mm/yyyy hh:mm';
+const wib = (iso: string) => new Date(Date.parse(iso) + 7 * 60 * 60 * 1000);
 
 function styleHeader(row: ExcelJS.Row) {
   row.height = 24;
@@ -13,58 +14,70 @@ function styleHeader(row: ExcelJS.Row) {
   });
 }
 
-export async function createFinanceReport(orders: Order[], expenses: Expense[]) {
-  const payments = orders.flatMap(order => order.payments.map(payment => ({
-    time: payment.created,
-    type: 'Pembayaran',
-    reference: order.number,
-    category: payment.method,
-    amount: payment.amount,
-  })));
-  const transactions = [
-    ...payments,
-    ...expenses.map(expense => ({
-      time: expense.created,
-      type: 'Pengeluaran',
-      reference: expense.note || 'Biaya operasional',
-      category: expense.category,
-      amount: -expense.amount,
-    })),
-  ].sort((a, b) => Date.parse(b.time) - Date.parse(a.time));
+function addTable(
+  workbook: ExcelJS.Workbook,
+  name: string,
+  columns: Partial<ExcelJS.Column>[],
+  rows: (string | number | Date)[][],
+) {
+  const sheet = workbook.addWorksheet(name, { views: [{ state: 'frozen', ySplit: 1 }] });
+  sheet.columns = columns;
+  sheet.addRows(rows);
+  styleHeader(sheet.getRow(1));
+  sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: sheet.rowCount, column: columns.length } };
+}
 
+export async function createFinanceReport(report: FinanceReport) {
   const workbook = new ExcelJS.Workbook();
   const summary = workbook.addWorksheet('Ringkasan');
-  summary.columns = [{ width: 28 }, { width: 22, style: { numFmt: rupiah } }];
-  const income = payments.reduce((total, payment) => total + payment.amount, 0);
-  const spending = expenses.reduce((total, expense) => total + expense.amount, 0);
+  summary.columns = [{ width: 30 }, { width: 30, style: { numFmt: rupiah } }];
   summary.addRows([
     ['LM Laundry', 'Laporan keuangan'],
-    ['Total pemasukan', income],
-    ['Total pengeluaran', spending],
-    ['Selisih kas', income - spending],
+    ['Periode (WIB)', report.period.start + ' s.d. ' + report.period.end],
+    ['Jumlah nota', report.orders.length],
+    ['Nilai pesanan', report.orderValue],
+    ['Kas masuk', report.incoming],
+    ['Kas keluar', report.outgoing],
+    ['Selisih kas', report.net],
+    ['Piutang akhir periode', report.outstanding],
+    [],
+    ['Metode pembayaran', 'Kas masuk'],
+    ...report.methods.map(({ method, amount }) => [method, amount]),
   ]);
+  summary.getCell('B3').numFmt = '0';
   styleHeader(summary.getRow(1));
-  summary.getRow(4).font = { bold: true };
+  styleHeader(summary.getRow(10));
 
-  const detail = workbook.addWorksheet('Transaksi', { views: [{ state: 'frozen', ySplit: 1 }] });
-  detail.columns = [
-    { header: 'Waktu (WIB)', width: 21, style: { numFmt: 'dd/mm/yyyy hh:mm' } },
-    { header: 'Jenis', width: 17 },
-    { header: 'Referensi / catatan', width: 32, style: { alignment: { wrapText: true } } },
-    { header: 'Metode / kategori', width: 23, style: { alignment: { wrapText: true } } },
-    { header: 'Nominal', width: 19, style: { numFmt: rupiah } },
+  const date = { width: 22, style: { numFmt: timestamp } };
+  const amount = { width: 19, style: { numFmt: rupiah } };
+  const number = { header: 'No. nota', width: 29 };
+  const customer = { header: 'Pelanggan', width: 28 };
+  const balances = [
+    { header: 'Tagihan', ...amount },
+    { header: 'Dibayar s.d. akhir periode', ...amount, width: 28 },
+    { header: 'Sisa tagihan', ...amount },
   ];
-  for (const transaction of transactions) {
-    detail.addRow([
-      new Date(Date.parse(transaction.time) + wibOffset),
-      transaction.type,
-      transaction.reference,
-      transaction.category,
-      transaction.amount,
-    ]);
-  }
-  styleHeader(detail.getRow(1));
-  detail.autoFilter = { from: 'A1', to: `E${detail.rowCount}` };
+  addTable(workbook, 'Transaksi Kas', [
+    { header: 'Waktu (WIB)', ...date }, { header: 'Jenis', width: 17 },
+    { header: 'Referensi', width: 29 }, { header: 'Keterangan', width: 32 },
+    { header: 'Metode / kategori', width: 24 },
+    { header: 'Kas masuk', ...amount }, { header: 'Kas keluar', ...amount },
+  ], report.transactions.map(row => [
+    wib(row.time), row.type, row.reference, row.note, row.category, row.incoming, row.outgoing,
+  ]));
+  addTable(workbook, 'Pesanan', [
+    { header: 'Masuk (WIB)', ...date }, number, customer, ...balances,
+    { header: 'Status pengerjaan saat ini', width: 28 },
+    { header: 'Status bayar akhir periode', width: 28 },
+  ], report.orders.map(({ order, paid, remaining }) => [
+    wib(order.created), order.number, order.customer, order.total, paid, remaining,
+    order.status, remaining === 0 ? 'Lunas' : paid > 0 ? 'Bayar sebagian' : 'Belum bayar',
+  ]));
+  addTable(workbook, 'Piutang', [
+    { header: 'Masuk (WIB)', ...date }, number, customer, ...balances,
+  ], report.receivables.map(({ order, paid, remaining }) => [
+    wib(order.created), order.number, order.customer, order.total, paid, remaining,
+  ]));
 
   const buffer = await workbook.xlsx.writeBuffer();
   return new Blob([buffer], {

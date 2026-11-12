@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { WashingMachine, LayoutDashboard, ClipboardList, Users, Shirt, Wallet, Plus, Search, ArrowUpRight, ArrowRight, RefreshCw, X, Printer, Check, Clock3, PackageCheck, ChevronRight, Zap, BedDouble, Wind, Trash2, MessageCircle, Download, AlertCircle, Menu, LogIn, LoaderCircle, LogOut, LockKeyhole } from 'lucide-react';
+import { WashingMachine, LayoutDashboard, ClipboardList, Users, Shirt, Wallet, Plus, Search, ArrowUpRight, ArrowRight, RefreshCw, X, Printer, Check, Clock3, PackageCheck, ChevronRight, Zap, BedDouble, Wind, Trash2, MessageCircle, AlertCircle, Menu, LogIn, LoaderCircle, LogOut, LockKeyhole } from 'lucide-react';
 import { SERVICES, SERVICE_GROUPS, estimatedHours, STATUSES, METHODS, money, day, dateTime, nextStatus, type Order, type Expense } from '@/lib/domain';
+import FinanceView from './finance-view';
 type Page='dashboard'|'orders'|'new'|'customers'|'services'|'finance';
 const groupIcon=(icon:string)=>icon==='bed'?BedDouble:icon==='wind'?Wind:Shirt;
 const statusClass=(s:string)=>(s==='Selesai'||s==='Lunas')?'green':s==='Siap Diambil'?'purple':s==='Diterima'?'blue':'amber';
@@ -13,35 +14,13 @@ export default function LaundryApp({user}:{user:{name:string;email:string;role:'
  const [passwordModal,setPasswordModal]=useState(false);
  const [page,setPage]=useState<Page>(isOwner?'dashboard':'orders'),[orders,setOrders]=useState<Order[]>([]),[expenses,setExpenses]=useState<Expense[]>([]),[selected,setSelected]=useState<string|null>(null),[loading,setLoading]=useState(false),[error,setError]=useState(''),[toast,setToast]=useState(''),[busy,setBusy]=useState(false),[query,setQuery]=useState(''),[filter,setFilter]=useState('Semua'),[menu,setMenu]=useState(false),[ready,setReady]=useState(false),[expenseModal,setExpenseModal]=useState(false);
  const mutationLock=useRef(false);
- const [exporting,setExporting]=useState(false);
-
- async function exportFinance(){
-  setExporting(true);
-  setError('');
-  try{
-   const {createFinanceReport}=await import('@/lib/finance-export');
-   const report=await createFinanceReport(orders,expenses);
-   const url=URL.createObjectURL(report);
-   const link=document.createElement('a');
-   link.href=url;
-   link.download='LM-Laundry-keuangan-'+day(new Date().toISOString())+'.xlsx';
-   document.body.appendChild(link);
-   link.click();
-   link.remove();
-   setTimeout(()=>URL.revokeObjectURL(url),30000);
-  }catch{
-   setError('Laporan Excel gagal diunduh. Silakan coba lagi.');
-  }finally{
-   setExporting(false);
-  }
- }
  useEffect(()=>{setReady(true);if(user)void refresh()},[]);
  useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(''),4500);return ()=>clearTimeout(t)}},[toast]);
  async function refresh(){setLoading(true);setError('');try{const r=await fetch('/api/data',{cache:'no-store'});const d:any=await r.json();if(r.status===401){window.location.replace('/');throw Error('Sesi berakhir. Silakan masuk kembali.')}if(!r.ok)throw Error(d.error);setOrders(d.orders);setExpenses(d.expenses)}catch(e){setError((e as Error).message||'Tidak dapat terhubung ke server.')}finally{setLoading(false)}}
  async function mutate(data:any){if(mutationLock.current)throw Error('Transaksi lain sedang disimpan.');mutationLock.current=true;setBusy(true);setError('');try{const r=await fetch('/api/data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const d:any=await r.json();if(r.status===401){window.location.replace('/');throw Error('Sesi berakhir. Silakan masuk kembali.')}if(!r.ok)throw Error(d.error);setOrders(d.orders);setExpenses(d.expenses);setToast('Perubahan berhasil disimpan.');return d;}finally{mutationLock.current=false;setBusy(false)}}
  function navigate(p:Page){if(p==='finance'&&!isOwner)return;setPage(p);setMenu(false);setQuery('');setFilter('Semua')}
  const now=new Date(),today=day(now.toISOString()),active=orders.filter(o=>o.status!=='Selesai'),late=active.filter(o=>new Date(o.due)<now),due=active.filter(o=>day(o.due)===today),pickup=active.filter(o=>o.status==='Siap Diambil');
- const paidToday=orders.flatMap(o=>o.payments).filter(p=>day(p.created)===today).reduce((s,p)=>s+p.amount,0),spentToday=expenses.filter(e=>day(e.created)===today).reduce((s,e)=>s+e.amount,0),debt=orders.reduce((s,o)=>s+o.total-o.paid,0);
+ const paidToday=orders.flatMap(o=>o.payments).filter(p=>day(p.created)===today).reduce((s,p)=>s+p.amount,0),spentToday=expenses.filter(e=>day(e.created)===today).reduce((s,e)=>s+e.amount,0);
  let visible=orders.filter(o=>(o.number+' '+o.customer+' '+o.phone).toLowerCase().includes(query.toLowerCase()));
  if(filter==='Terlambat')visible=visible.filter(o=>late.includes(o));else if(filter==='Hari ini')visible=visible.filter(o=>due.includes(o));else if(filter==='Belum lunas')visible=visible.filter(o=>o.paid<o.total);else if(filter!=='Semua')visible=visible.filter(o=>o.status===filter);
  if(page==='dashboard')visible=[...visible].filter(o=>o.status!=='Selesai').sort((a,b)=>a.due.localeCompare(b.due)).slice(0,7);
@@ -60,7 +39,7 @@ export default function LaundryApp({user}:{user:{name:string;email:string;role:'
   {page==='new'&&<NewOrder orders={orders} busy={busy} enabled={!!user} onSave={async data=>{const d=await mutate(data);navigate('orders');setSelected(d.selectedId)}} onCancel={()=>navigate('orders')}/>}
   {page==='customers'&&<section className="card"><div className="section-heading"><h2>Daftar pelanggan</h2><label className="search"><Search size={17}/><input placeholder="Cari pelanggan…" value={query} onChange={e=>setQuery(e.target.value)}/></label></div>{orders.length? <div className="table-scroll"><table><thead><tr><th>Pelanggan</th><th>WhatsApp</th><th>Pesanan</th><th>Total transaksi</th><th>Sisa tagihan</th><th/></tr></thead><tbody>{Array.from(new Set(orders.map(o=>o.phone))).map(phone=>{const os=orders.filter(o=>o.phone===phone),o=os[0];if(!(o.customer+phone).toLowerCase().includes(query.toLowerCase()))return null;return <tr key={phone}><td><strong>{o.customer}</strong></td><td>+{phone}</td><td>{os.length} pesanan</td><td>{money(os.reduce((s,o)=>s+o.total,0))}</td><td>{money(os.reduce((s,o)=>s+o.total-o.paid,0))}</td><td><button className="text-btn" onClick={()=>{navigate('orders');setQuery(phone)}}>Riwayat <ArrowRight size={14}/></button></td></tr>})}</tbody></table></div>:<Empty title="Belum ada pelanggan" body="Pelanggan otomatis tercatat saat pesanan pertama disimpan." action={()=>navigate('new')}/>}</section>}
   {page==='services'&&<><div className="notice"><AlertCircle size={18}/><span>Harga per kg, pcs, atau set sesuai layanan. Estimasi layanan satuan dikonfirmasi saat menerima pesanan.</span></div><div className="catalog-grid">{SERVICE_GROUPS.map((g,index)=>{const Icon=groupIcon(g.icon);return <section className="card catalog-card" key={g.id}><div className="catalog-heading"><span className={'service-icon s'+index%4}><Icon size={25}/></span><div><h2>{g.name}</h2><small>{g.id==='wash'||g.id==='iron'||g.id==='fold'?'Pilih durasi sesuai kebutuhan pelanggan':'Layanan satuan'}</small></div></div><div className="catalog-variants">{SERVICES.filter(s=>s.group===g.id).map(s=><div className="catalog-variant" key={s.id}><span>{s.variant}{s.hours===null&&<small>Estimasi dikonfirmasi saat order</small>}</span><strong>{money(s.price)}<small> / {s.unit}</small></strong></div>)}</div></section>})}</div></>}
-  {page==='finance'&&isOwner&&<><div className="finance-stats">{[{label:'Kas masuk hari ini',value:paidToday,tone:'blue'},{label:'Pengeluaran hari ini',value:spentToday,tone:'red'},{label:'Selisih kas hari ini',value:paidToday-spentToday,tone:'green'},{label:'Total piutang',value:debt,tone:'amber'}].map(v=><section className="card finance-stat" key={v.label}><span className={'stat-icon '+v.tone}><Wallet size={20}/></span><p>{v.label}</p><strong>{money(v.value)}</strong></section>)}</div><div className="notice"><AlertCircle size={18}/><span>Selisih kas adalah pembayaran diterima dikurangi pengeluaran yang dicatat hari ini. Angka ini belum mencakup perhitungan laba akuntansi.</span></div><section className="card"><div className="section-heading"><div><h2>Riwayat keuangan</h2><p>Semua pembayaran dan pengeluaran yang tercatat.</p></div><div className="button-row"><button className="secondary" disabled={loading||exporting} onClick={exportFinance}><Download size={16}/>{exporting?'Menyiapkan Excel…':'Unduh Excel'}</button><button className="primary" disabled={!user} onClick={()=>setExpenseModal(true)}><Plus size={16}/>Pengeluaran</button></div></div><div className="table-scroll"><table><thead><tr><th>Waktu</th><th>Transaksi</th><th>Keterangan</th><th>Metode / kategori</th><th>Nominal</th></tr></thead><tbody>{[...orders.flatMap(o=>o.payments.map(p=>({...p,kind:'in',label:o.number+' · '+o.customer,category:p.method}))),...expenses.map(e=>({...e,kind:'out',label:e.note||'Biaya operasional'}))].sort((a,b)=>b.created.localeCompare(a.created)).map(r=><tr key={r.id}><td>{dateTime(r.created)}</td><td><span className={'badge '+(r.kind==='in'?'green':'red')}>{r.kind==='in'?'Pembayaran':'Pengeluaran'}</span></td><td>{r.label}</td><td>{r.category}</td><td className={r.kind==='in'?'positive':'negative'}>{r.kind==='in'?'+':'−'}{money(r.amount)}</td></tr>)}</tbody></table></div>{!orders.some(o=>o.payments.length)&&!expenses.length&&<Empty title="Belum ada transaksi" body="Pembayaran pesanan dan biaya operasional akan muncul di sini."/>}</section></>}
+  {page==='finance'&&isOwner&&<FinanceView orders={orders} expenses={expenses} today={today} loading={loading} onExpense={()=>setExpenseModal(true)} onOrder={setSelected}/>}
   <footer className="page-footer"><span>LM Laundry · Bersih Setiap Hari</span><span><span className="live-dot"/>{user?'Database terpusat':'Masuk untuk mulai mencatat'}</span></footer>
   </main></div>
   {detail&&<OrderDetail order={detail} onClose={()=>setSelected(null)} busy={busy} onMutate={mutate}/>}
