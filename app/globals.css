@@ -28,3 +28,4 @@
 .receipt-paper--thermal .receipt-totals > div { gap: 1mm; margin: 1mm 0; }
 .receipt-paper--thermal .receipt-total { font-size: 12pt; }
 .receipt-paper--thermal .receipt-notes { margin-top: 2mm; }
+.receipt-compact-print { margin-top: 12px; }
