@@ -9,12 +9,7 @@ const rp=(value:number)=>'Rp '+new Intl.NumberFormat('id-ID',{maximumFractionDig
 const when=(value:string)=>new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(value))+' WIB';
 function hex(value:string){return Array.from(value,c=>c.charCodeAt(0).toString(16).padStart(2,'0')).join('');}
 export function receiptFilename(number:string,paper:58|80=80){return 'Nota-'+number.replace(/[^a-zA-Z0-9_-]/g,'-').slice(0,100)+(paper===58?'-58mm':'')+'.pdf';}
-export function buildReceiptPdf(order:Order,paper:58|80=80):Uint8Array{
- const width=paper===58?58*72/25.4:WIDTH;
- const margin=paper===58?5*72/25.4:MARGIN;
- const font=paper===58?10.5:FONT;
- const leading=paper===58?14:LEADING;
- const columns=Math.min(COLS,Math.floor((width-2*margin)/(font*.6)));
+function receiptLines(order:Order,columns:number){
  const lines:Line[]=[];
  const add=(value:unknown,bold=false)=>wrap(value,columns).forEach(text=>lines.push({text,bold}));
  const divider=()=>add('-'.repeat(columns));
@@ -34,6 +29,31 @@ export function buildReceiptPdf(order:Order,paper:58|80=80):Uint8Array{
  for(const item of order.items){add(item.name,true);add(`${item.quantity} ${item.unit} x ${rp(item.price)}`);pair('Subtotal',rp(item.subtotal));lines.push({text:''});}
  divider();pair('Biaya tambahan',rp(order.extra));pair('Diskon',rp(order.discount));pair('TOTAL',rp(order.total),true);pair('Dibayar',rp(order.paid));pair('SISA TAGIHAN',rp(Math.max(0,order.total-order.paid)),true);divider();
  add('Catatan: '+(order.notes||'-'));lines.push({text:''});add('Simpan nota untuk pengambilan cucian.');add('Terima kasih sudah mempercayai kami.');
+ return lines;
+}
+
+export function buildThermalReceipt(order:Order):string{
+ // RPP02N Font A uses 12 dots per character across a 384-dot print area.
+ const initialize='\x1b@\x1bM\x00';
+ const normalSize='\x1d!\x00';
+ const doubleHeight='\x1d!\x01';
+ const lines=receiptLines(order,32).map(line=>{
+  const align=line.center?'\x1ba\x01':'\x1ba\x00';
+  const emphasis=line.bold?'\x1bE\x01':'\x1bE\x00';
+  const size=line.size||/^(TOTAL|SISA TAGIHAN)\s/.test(line.text)?doubleHeight:normalSize;
+  const text=line.text.normalize('NFD').replace(/\p{M}/gu,'').replace(/[^\x20-\x7e]/g,'?');
+  return align+emphasis+size+text+'\n';
+ });
+ return initialize+lines.join('')+normalSize+'\x1bd\x02';
+}
+
+export function buildReceiptPdf(order:Order,paper:58|80=80):Uint8Array{
+ const width=paper===58?58*72/25.4:WIDTH;
+ const margin=paper===58?5*72/25.4:MARGIN;
+ const font=paper===58?10.5:FONT;
+ const leading=paper===58?14:LEADING;
+ const columns=Math.min(COLS,Math.floor((width-2*margin)/(font*.6)));
+ const lines=receiptLines(order,columns);
  const height=Math.max(300,margin*2+lines.reduce((sum,line)=>sum+(line.size?line.size+5:leading),0));
  let y=height-margin;
  const content=lines.map(line=>{const size=line.size??font;y-=line.size?size+5:leading;const x=line.center?(width-line.text.length*size*.6)/2:margin;return `BT /${line.bold?'F2':'F1'} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm <${hex(line.text)}> Tj ET`;}).join('\n')+'\n';
