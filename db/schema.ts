@@ -31,3 +31,8 @@ export const appSessions=sqliteTable('app_sessions',{
 export const authAttempts=sqliteTable('auth_attempts',{
  key:text('key').primaryKey(), attempts:integer('attempts').notNull(), resetAt:integer('reset_at').notNull(),
 });
+export const customers = sqliteTable('customers', {
+ id: text('id').primaryKey(),
+ name: text('name').notNull(),
+ phone: text('phone').unique(),
+});

@@ -15,6 +15,13 @@
       "when": 1793615827279,
       "tag": "0001_foamy_vin_gonzales",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794491034880,
+      "tag": "0002_milky_king_cobra",
+      "breakpoints": true
     }
   ]
 }

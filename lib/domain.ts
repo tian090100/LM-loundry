@@ -41,6 +41,7 @@ export type Item = {serviceId:string;name:string;unit:string;quantity:number;pri
 export type Payment = {id:string;orderId:string;amount:number;method:string;created:string;actor:string};
 export type Order = {id:string;number:string;customer:string;phone:string;items:Item[];total:number;discount:number;extra:number;status:string;due:string;created:string;notes:string;packages:number;rack:string;history:{status:string;at:string;actor:string}[];payments:Payment[];paid:number};
 export type Expense = {id:string;category:string;amount:number;note:string;created:string;actor:string};
+export type Customer = {id:string;name:string;phone:string|null};
 export const money=(n:number)=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n);
 export const day=(iso:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso));
 export const dateTime=(iso:string)=>new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(iso));

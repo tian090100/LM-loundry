@@ -6,8 +6,8 @@ export const dynamic='force-dynamic';
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
 async function snapshot(role:string){
  const db=env.DB!;
- const [os,ps,es]=await db.batch([db.prepare('SELECT * FROM orders ORDER BY created DESC'),db.prepare('SELECT * FROM payments ORDER BY created'),db.prepare(canViewFinance(role)?'SELECT * FROM expenses ORDER BY created DESC':'SELECT * FROM expenses WHERE 0')]);
- return {orders:os.results.map((o:any)=>{const payments=ps.results.filter((p:any)=>p.order_id===o.id).map((p:any)=>({...p,orderId:p.order_id}));return {...o,items:JSON.parse(o.items),history:JSON.parse(o.history),payments,paid:payments.reduce((a:number,p:any)=>a+p.amount,0)};}),expenses:es.results};
+ const [os,ps,es,cs]=await db.batch([db.prepare('SELECT * FROM orders ORDER BY created DESC'),db.prepare('SELECT * FROM payments ORDER BY created'),db.prepare(canViewFinance(role)?'SELECT * FROM expenses ORDER BY created DESC':'SELECT * FROM expenses WHERE 0'),db.prepare('SELECT id, name, phone FROM customers ORDER BY name')]);
+ return {orders:os.results.map((o:any)=>{const payments=ps.results.filter((p:any)=>p.order_id===o.id).map((p:any)=>({...p,orderId:p.order_id}));return {...o,items:JSON.parse(o.items),history:JSON.parse(o.history),payments,paid:payments.reduce((a:number,p:any)=>a+p.amount,0)};}),expenses:es.results,customers:cs.results};
 }
 export async function GET(request:Request){
  try{const u=await getSession();if(!u)return json({error:'Silakan masuk terlebih dahulu.'},401);if(new URL(request.url).searchParams.get('scope')==='finance'&&!canViewFinance(u.role))return json({error:'Akses keuangan hanya untuk owner.'},403);return json(await snapshot(u.role));}
