@@ -38,8 +38,31 @@ export function buildReceiptPdf(order:Order,paper:58|80=80):Uint8Array{
  const font=paper===58?10.5:FONT;
  const leading=paper===58?14:LEADING;
  const columns=Math.min(COLS,Math.floor((width-2*margin)/(font*.6)));
- const lines=receiptLines(order,columns);
- const height=Math.max(300,margin*2+lines.reduce((sum,line)=>sum+(line.size?line.size+5:leading),0));
+ return renderRollPdf(receiptLines(order,columns),width,margin,font,leading,300);
+}
+
+export function basketLabelFilename(number:string){
+ return receiptFilename(number,58).replace(/^Nota-/,'Label-Keranjang-');
+}
+
+export function buildBasketLabelPdf(order:Order):Uint8Array{
+ const width=58*72/25.4, margin=5*72/25.4, font=10.5;
+ const columns=Math.floor((width-2*margin)/(font*.6));
+ const nameSize=13;
+ const nameColumns=Math.floor((width-2*margin)/(nameSize*.6));
+ const lines:Line[]=[{text:'LABEL KERANJANG',center:true}];
+ for(const text of wrap(order.customer,nameColumns))lines.push({text,bold:true,size:nameSize});
+ for(const text of wrap(order.number,columns))lines.push({text,bold:true});
+ for(const text of wrap(order.packages+' paket',columns))lines.push({text,bold:true});
+ lines.push({text:'-'.repeat(columns)});
+ for(const item of order.items){
+  for(const text of wrap(`${item.quantity} ${item.unit} - ${item.name}`,columns))lines.push({text});
+ }
+ return renderRollPdf(lines,width,margin,font,14);
+}
+
+function renderRollPdf(lines:Line[],width:number,margin:number,font:number,leading:number,minHeight=0):Uint8Array{
+ const height=Math.max(minHeight,margin*2+lines.reduce((sum,line)=>sum+(line.size?line.size+5:leading),0));
  let y=height-margin;
  const content=lines.map(line=>{const size=line.size??font;y-=line.size?size+5:leading;const x=line.center?(width-line.text.length*size*.6)/2:margin;return `BT /${line.bold?'F2':'F1'} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm <${hex(line.text)}> Tj ET`;}).join('\n')+'\n';
  const objects=[
