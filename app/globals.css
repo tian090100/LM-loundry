@@ -36,3 +36,13 @@
 .finance-filters label { display: grid; gap: 6px; }
 .finance-tabs, .finance-methods { margin-bottom: 14px; }
 .finance-tabs + .finance-methods { margin-top: 12px; }
+
+.customer-lookup { display: grid; gap: 6px; margin-bottom: 16px; }
+.customer-lookup-input { position: relative; }
+.customer-lookup-input svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #617792; pointer-events: none; }
+.customer-lookup-input input { width: 100%; padding-left: 38px; }
+.customer-lookup-results { list-style: none; padding: 0; margin: 0; max-height: 240px; overflow-y: auto; border: 1px solid #dbe9f7; border-radius: 9px; }
+.customer-lookup-results button { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; width: 100%; padding: 10px 12px; color: inherit; background: white; border: 0; text-align: left; }
+.customer-lookup-results li + li button { border-top: 1px solid #edf2f7; }
+.customer-lookup-results button:hover, .customer-lookup-results button:focus-visible { background: #edf6ff; }
+.customer-lookup-results span, .customer-lookup small { color: #617792; }
