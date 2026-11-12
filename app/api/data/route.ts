@@ -24,7 +24,7 @@ export async function POST(request:Request){
   const existing=await db.prepare('SELECT id FROM orders WHERE id=?').bind(b.id).first();
   if(existing)return json({...(await snapshot(u.role)),selectedId:b.id});
   const o=validateOrder(b),number='LM-'+now.slice(0,10).replaceAll('-','')+'-'+b.id.replaceAll('-','').slice(0,8).toUpperCase();
-  const statements=[db.prepare('INSERT INTO orders (id,number,customer,phone,items,total,discount,extra,status,due,created,notes,packages,rack,history) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(b.id,number,o.customer,o.phone,JSON.stringify(o.items),o.total,o.discount,o.extra,'Diterima',o.due,now,o.notes,o.packages,o.rack,JSON.stringify([{status:'Diterima',at:now,actor}]))];
+  const statements=[db.prepare('INSERT INTO orders (id,number,customer,phone,items,total,discount,extra,status,due,created,notes,packages,rack,history) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(b.id,number,o.customer,o.phone,JSON.stringify(o.items),o.total,o.discount,o.extra,'Diterima',o.due,now,o.notes,o.packages,'',JSON.stringify([{status:'Diterima',at:now,actor}]))];
   if(o.paid) statements.push(db.prepare('INSERT INTO payments (id,order_id,amount,method,created,actor) VALUES (?,?,?,?,?,?)').bind(b.id+'-initial',b.id,o.paid,o.method,now,actor));
   await db.batch(statements);
   return json({...(await snapshot(u.role)),selectedId:b.id});

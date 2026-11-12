@@ -6,7 +6,8 @@ const readable=pdf=>Array.from(pdf.matchAll(/<([a-f0-9]*)> Tj/g),m=>Buffer.from(
 test('receipt PDF includes stored amounts and correct outstanding balance',()=>{
  const pdf=new TextDecoder().decode(buildReceiptPdf(order)),text=readable(pdf);
  assert.ok(pdf.startsWith('%PDF-1.4'));assert.ok(pdf.endsWith('%%EOF\n'));
- for(const part of ['LM-TEST-NOTA','Pelanggan Uji','Cuci + Setrika Wangi - 2 hari','Rp 75.000','Rp 25.000','Rp 50.000','B2'])assert.ok(text.includes(part),part);
+ for(const part of ['LM-TEST-NOTA','Pelanggan Uji','Cuci + Setrika Wangi - 2 hari','Rp 75.000','Rp 25.000','Rp 50.000','1 paket'])assert.ok(text.includes(part),part);
+ assert.ok(!text.includes('B2'));
  const xref=Number(pdf.match(/startxref\n(\d+)/)[1]);assert.equal(pdf.slice(xref,xref+4),'xref');
  const offsets=Array.from(pdf.matchAll(/(\d{10}) 00000 n/g),m=>Number(m[1]));offsets.forEach((n,i)=>assert.ok(pdf.slice(n).startsWith(`${i+1} 0 obj`)));
  const stream=pdf.match(/\/Length (\d+) >>\nstream\n([\s\S]*?)endstream/);assert.equal(Number(stream[1]),stream[2].length);

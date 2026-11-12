@@ -64,7 +64,7 @@ export function validateOrder(input:any) {
  if(!Number.isFinite(due.getTime())||due.getTime()<Date.now()-60000) throw Error('Estimasi selesai harus setelah waktu sekarang.');
  const packages=Number(input.packages??1);
  if(!Number.isInteger(packages)||packages<1||packages>100) throw Error('Jumlah paket harus 1–100.');
- return {customer:input.customer.trim(),phone,items,total,extra,discount,paid,method:input.method,due:due.toISOString(),packages,notes:String(input.notes??'').slice(0,500),rack:String(input.rack??'').slice(0,50)};
+ return {customer:input.customer.trim(),phone,items,total,extra,discount,paid,method:input.method,due:due.toISOString(),packages,notes:String(input.notes??'').slice(0,500)};
 }
 export function amount(value:unknown){const n=Number(value);if(!Number.isSafeInteger(n)||n<0||n>100000000)throw Error('Nominal harus bilangan rupiah utuh antara 0 dan Rp100 juta.');return n;}
 export function nextStatus(o:Pick<Order,'items'|'status'>){

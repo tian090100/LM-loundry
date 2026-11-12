@@ -17,7 +17,7 @@ export function buildReceiptPdf(order:Order):Uint8Array{
  lines.push({text:'LM Laundry',bold:true,center:true,size:16},{text:'Bersih Setiap Hari',center:true},{text:''});divider();
  add(order.number,true);add(order.customer);add('WA: +'+order.phone);
  add('Masuk: '+when(order.created));add('Estimasi: '+when(order.due));
- add(order.packages+' paket | Rak '+(order.rack||'-'));divider();
+ add(order.packages+' paket');divider();
  for(const item of order.items){add(item.name,true);add(`${item.quantity} ${item.unit} x ${rp(item.price)}`);pair('Subtotal',rp(item.subtotal));lines.push({text:''});}
  divider();pair('Biaya tambahan',rp(order.extra));pair('Diskon',rp(order.discount));pair('TOTAL',rp(order.total),true);pair('Dibayar',rp(order.paid));pair('SISA TAGIHAN',rp(Math.max(0,order.total-order.paid)),true);divider();
  add('Catatan: '+(order.notes||'-'));lines.push({text:''});add('Simpan nota untuk pengambilan cucian.');add('Terima kasih sudah mempercayai kami.');
