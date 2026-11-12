@@ -51,13 +51,19 @@ export function buildBasketLabelPdf(order:Order):Uint8Array{
  const nameSize=13;
  const nameColumns=Math.floor((width-2*margin)/(nameSize*.6));
  const lines:Line[]=[{text:'LABEL KERANJANG',center:true}];
+ const add=(value:string,bold=false)=>wrap(value,columns).forEach(text=>lines.push({text,bold}));
  for(const text of wrap(order.customer,nameColumns))lines.push({text,bold:true,size:nameSize});
- for(const text of wrap(order.number,columns))lines.push({text,bold:true});
- for(const text of wrap(order.packages+' paket',columns))lines.push({text,bold:true});
- lines.push({text:'-'.repeat(columns)});
+ add(order.number,true);
+ add(order.phone?'WA: +'+order.phone:'WA: -');
+ add('Masuk: '+when(order.created));
+ add('Estimasi: '+when(order.due));
+ add(order.packages+' paket',true);
+ add('-'.repeat(columns));
  for(const item of order.items){
-  for(const text of wrap(`${item.quantity} ${item.unit} - ${item.name}`,columns))lines.push({text});
+  add(`${item.quantity} ${item.unit} - ${item.name}`);
  }
+ add('-'.repeat(columns));
+ add('Catatan: '+(order.notes?.trim()||'-'));
  return renderRollPdf(lines,width,margin,font,14);
 }
 
